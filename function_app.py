@@ -8,10 +8,17 @@ from datetime import datetime
 
 app = func.FunctionApp()
 
+# Constants
+CITIES = ["Guarulhos", "Curitiba", "Recife", "Seoul", "Sydney", "Paris", "Miami"]
+API_URL = "https://api.openweathermap.org/data/2.5/weather"
+
 # Initialize Key Vault client
 credential = DefaultAzureCredential()
 key_vault_url = "https://engdadoskey2.vault.azure.net/"
 secret_client = SecretClient(vault_url=key_vault_url, credential=credential)
+
+# Fetch API key from Key Vault
+API_KEY = secret_client.get_secret("api_key").value
 
 def get_db_config():
     return {
