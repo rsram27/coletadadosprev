@@ -1,55 +1,88 @@
-import azure.functions as func
-import datetime
-import json
 import logging
 import requests
-
-app = func.FunctionApp()
+import pyodbc
+from datetime import datetime
 
 # API Configuration
 API_URL = "https://api.openweathermap.org/data/2.5/weather"
 API_KEY = "e7e6f79fa9a7412ed6a06afdd03297c2"  
 
-@app.route(route="coletadadosprev", auth_level=func.AuthLevel.FUNCTION)
-def coletadadosprev(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request.')
+# Configurações do SQL Azure
+DB_CONFIG = {
+    "server": "engdados.database.windows.net",
+    "database": "engdados",
+    "username": "azure",
+    "password": "Jjl3m47C2@#",
+}
 
-    # Get city parameter from request
-    city = req.params.get('city')
-    if not city:
-        try:
-            req_body = req.get_json()
-            city = req_body.get('city')
-        except ValueError:
-            pass
+# Lista de cidades
+CITIES = ["Guarulhos", "Curitiba", "Recife", "Seoul", "Sydney", "Paris", "Miami"]
 
-    if not city:
-        return func.HttpResponse(
-            "Please provide a city parameter in the query string or request body.",
-            status_code=400
-        )
+def connect_to_sql():
+    conn_str = (
+        f"Driver={{ODBC Driver 17 for SQL Server}};"
+        f"Server={DB_CONFIG['server']};"
+        f"Database={DB_CONFIG['database']};"
+        f"Uid={DB_CONFIG['username']};"
+        f"Pwd={DB_CONFIG['password']};"
+        f"Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;"
+    )
+    return pyodbc.connect(conn_str)
 
-    # Make request to OpenWeatherMap API
+def insert_weather_data(conn, data):
+    cursor = conn.cursor()
+    query = """
+        INSERT INTO WeatherData (
+            city_name, country, temperature, feels_like, temp_min, temp_max, pressure, humidity, visibility,
+            wind_speed, wind_deg, snow_1h, clouds_all, sunrise, sunset, timestamp
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """
+    cursor.execute(query, (
+        data["name"],
+        data["sys"]["country"],
+        data["main"]["temp"],
+        data["main"]["feels_like"],
+        data["main"]["temp_min"],
+        data["main"]["temp_max"],
+        data["main"]["pressure"],
+        data["main"]["humidity"],
+        data.get("visibility"),
+        data["wind"]["speed"],
+        data["wind"]["deg"],
+        data.get("snow", {}).get("1h"),
+        data["clouds"]["all"],
+        datetime.fromtimestamp(data["sys"]["sunrise"]),
+        datetime.fromtimestamp(data["sys"]["sunset"]),
+        datetime.fromtimestamp(data["dt"]),
+    ))
+    conn.commit()
+
+def fetch_and_save_weather_data(city):
+    response = requests.get(API_URL, params={
+        "q": city,
+        "appid": API_KEY,
+        "units": "metric",
+    })
+    response.raise_for_status()
+    return response.json()
+
+def main(mytimer: func.TimerRequest) -> None:
+    logging.info("Timer trigger function executed.")
+
     try:
-        params = {
-            "q": city,
-            "appid": API_KEY,
-            "units": "metric"
-        }
-        response = requests.get(API_URL, params=params)
-        response.raise_for_status()
-        weather_data = response.json()
+        conn = connect_to_sql()
 
-        # Return weather data as JSON
-        return func.HttpResponse(
-            body=json.dumps(weather_data),
-            mimetype="application/json",
-            status_code=200
-        )
-
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Error fetching weather data: {str(e)}")
-        return func.HttpResponse(
-            "Error fetching weather data",
-            status_code=500
-        )
+        for city in CITIES:
+            logging.info(f"Fetching weather data for {city}.")
+            try:
+                weather_data = fetch_and_save_weather_data(city)
+                insert_weather_data(conn, weather_data)
+                logging.info(f"Weather data for {city} inserted successfully.")
+            except requests.exceptions.RequestException as e:
+                logging.error(f"Error fetching data for {city}: {e}")
+            except pyodbc.Error as e:
+                logging.error(f"Database error for {city}: {e}")
+        
+        conn.close()
+    except Exception as e:
+        logging.error(f"Unexpected error: {e}")
