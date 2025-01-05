@@ -14,13 +14,13 @@ Azure Function created on January 4, 2024, to collect weather data from OpenWeat
 - API: OpenWeatherMap
 
 ## Cities Monitored
-# Guarulhos
-# Curitiba
-# Recife
-# Seoul
-# Sydney
-# Paris
-# Miami
+- Guarulhos
+- Curitiba
+- Recife
+- Seoul
+- Sydney
+- Paris
+- Miami
 
 ## Development
 Created for testing Azure Functions integration with Azure SQL Database and OpenWeatherMap API.
