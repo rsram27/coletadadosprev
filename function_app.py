@@ -8,56 +8,71 @@ from datetime import datetime
 
 app = func.FunctionApp()
 
-# Constants
-CITIES = ["Guarulhos", "Curitiba", "Recife", "Seoul", "Sydney", "Paris", "Miami"]
-API_URL = "https://api.openweathermap.org/data/2.5/weather"
+# Configurar logging
+logging.basicConfig(level=logging.INFO)
 
-# Initialize Key Vault client
-credential = DefaultAzureCredential()
-key_vault_url = "https://engdadoskey2.vault.azure.net/"
-secret_client = SecretClient(vault_url=key_vault_url, credential=credential)
+# Constantes
+CIDADES = ["Guarulhos", "Curitiba", "Recife", "Seoul", "Sydney", "Paris", "Miami"]
+URL_API = "https://api.openweathermap.org/data/2.5/weather"
 
-# Fetch API key from Key Vault
-API_KEY = secret_client.get_secret("api_key").value
+# Inicializa o cliente do Key Vault
+try:
+    credencial = DefaultAzureCredential()
+    url_key_vault = "https://engdadoskey2.vault.azure.net/"
+    cliente_secreto = SecretClient(vault_url=url_key_vault, credential=credencial)
+    logging.info("Cliente do Key Vault inicializado com sucesso.")
+except Exception as e:
+    logging.error(f"Erro ao inicializar o cliente do Key Vault: {e}")
 
-def get_db_config():
-    return {
-        "server": secret_client.get_secret("db-server").value,
-        "database": secret_client.get_secret("db-name").value,
-        "username": secret_client.get_secret("db-username").value,
-        "password": secret_client.get_secret("db-password").value,
-    }
+# Busca a chave da API no Key Vault
+try:
+    CHAVE_API = cliente_secreto.get_secret("api_key").value
+    logging.info("Chave da API obtida com sucesso.")
+except Exception as e:
+    logging.error(f"Erro ao obter a chave da API: {e}")
+
+def obter_configuracao_db():
+    try:
+        config = {
+            "servidor": cliente_secreto.get_secret("db-server").value,
+            "banco_de_dados": cliente_secreto.get_secret("db-name").value,
+            "usuario": cliente_secreto.get_secret("db-username").value,
+            "senha": cliente_secreto.get_secret("db-password").value,
+        }
+        logging.info("Configuração do banco de dados obtida com sucesso.")
+        return config
+    except Exception as e:
+        logging.error(f"Erro ao obter a configuração do banco de dados: {e}")
+        return None
 
 def connect_to_sql():
-    db_config = get_db_config()
-    conn_str = (
-        f"Driver={{ODBC Driver 17 for SQL Server}};"
-        f"Server={db_config['server']};"
-        f"Database={db_config['database']};"
-        f"Uid={db_config['username']};"
-        f"Pwd={db_config['password']};"
-        f"Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;"
-    )
-    return pyodbc.connect(conn_str)
+    config = obter_configuracao_db()
+    if config is None:
+        return None
+    try:
+        conn = pyodbc.connect(
+            f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+            f"SERVER={config['servidor']};"
+            f"DATABASE={config['banco_de_dados']};"
+            f"UID={config['usuario']};"
+            f"PWD={config['senha']}"
+        )
+        logging.info("Conexão com o banco de dados estabelecida com sucesso.")
+        return conn
+    except Exception as e:
+        logging.error(f"Erro ao conectar ao banco de dados: {e}")
+        return None
 
 def insert_weather_data(conn, data):
     cursor = conn.cursor()
-    query = """
-        INSERT INTO WeatherData (
-            city_name, country, temperature, feels_like, temp_min, temp_max, pressure, humidity, visibility,
-            wind_speed, wind_deg, snow_1h, clouds_all, sunrise, sunset, timestamp
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """
-    cursor.execute(query, (
+    cursor.execute("""
+        INSERT INTO WeatherData (city, temperature, humidity, pressure, wind_speed, wind_deg, snow_1h, clouds_all, sunrise, sunset, dt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
         data["name"],
-        data["sys"]["country"],
         data["main"]["temp"],
-        data["main"]["feels_like"],
-        data["main"]["temp_min"],
-        data["main"]["temp_max"],
-        data["main"]["pressure"],
         data["main"]["humidity"],
-        data.get("visibility"),
+        data["main"]["pressure"],
         data["wind"]["speed"],
         data["wind"]["deg"],
         data.get("snow", {}).get("1h"),
@@ -76,11 +91,14 @@ def coletadadosprev(mytimer: func.TimerRequest) -> None:
 
     try:
         conn = connect_to_sql()
-        for city in CITIES:
+        if conn is None:
+            logging.error("Não foi possível conectar ao banco de dados.")
+            return
+        for city in CIDADES:
             try:
-                response = requests.get(API_URL, params={
+                response = requests.get(URL_API, params={
                     "q": city,
-                    "appid": API_KEY,
+                    "appid": CHAVE_API,
                     "units": "metric"
                 })
                 response.raise_for_status()
