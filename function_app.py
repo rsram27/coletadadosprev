@@ -1,4 +1,6 @@
 import azure.functions as func
+from azure.identity import DefaultAzureCredential
+from azure.keyvault.secrets import SecretClient
 import logging
 import requests
 import pyodbc
@@ -6,27 +8,27 @@ from datetime import datetime
 
 app = func.FunctionApp()
 
-# API Configuration
-API_URL = "https://api.openweathermap.org/data/2.5/weather"
-API_KEY = "e7e6f79fa9a7412ed6a06afdd03297c2"  
+# Initialize Key Vault client
+credential = DefaultAzureCredential()
+key_vault_url = "https://engdadoskey2.vault.azure.net/"
+secret_client = SecretClient(vault_url=key_vault_url, credential=credential)
 
-# SQL Azure Configuration
-DB_CONFIG = {
-    "server": "engdados.database.windows.net",
-    "database": "engdados",
-    "username": "azure",
-    "password": "Jjl3m47C2@#",
-}
-
-CITIES = ["Guarulhos", "Curitiba", "Recife", "Seoul", "Sydney", "Paris", "Miami"]
+def get_db_config():
+    return {
+        "server": secret_client.get_secret("db-server").value,
+        "database": secret_client.get_secret("db-name").value,
+        "username": secret_client.get_secret("db-username").value,
+        "password": secret_client.get_secret("db-password").value,
+    }
 
 def connect_to_sql():
+    db_config = get_db_config()
     conn_str = (
         f"Driver={{ODBC Driver 17 for SQL Server}};"
-        f"Server={DB_CONFIG['server']};"
-        f"Database={DB_CONFIG['database']};"
-        f"Uid={DB_CONFIG['username']};"
-        f"Pwd={DB_CONFIG['password']};"
+        f"Server={db_config['server']};"
+        f"Database={db_config['database']};"
+        f"Uid={db_config['username']};"
+        f"Pwd={db_config['password']};"
         f"Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;"
     )
     return pyodbc.connect(conn_str)
@@ -79,3 +81,13 @@ def coletadadosprev(mytimer: func.TimerRequest) -> None:
         conn.close()
     except Exception as e:
         logging.error(f"Error: {str(e)}")
+
+# Azure Key Vault Configuration
+KEY_VAULT_CONFIG = {
+    "type": "setting",
+    "settings": {
+        "azure.keyVault.name": "engdadoskey2",
+        "azure.tenant": "bb19c0d2-edc0-4f29-bc67-6570c6508066",
+        "azure.subscription": "feecd42b-a2f9-46bd-8aca-5810ea481805"
+    }
+}
