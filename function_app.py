@@ -1,13 +1,16 @@
+import azure.functions as func
 import logging
 import requests
 import pyodbc
 from datetime import datetime
 
+app = func.FunctionApp()
+
 # API Configuration
 API_URL = "https://api.openweathermap.org/data/2.5/weather"
 API_KEY = "e7e6f79fa9a7412ed6a06afdd03297c2"  
 
-# Configurações do SQL Azure
+# SQL Azure Configuration
 DB_CONFIG = {
     "server": "engdados.database.windows.net",
     "database": "engdados",
@@ -15,7 +18,6 @@ DB_CONFIG = {
     "password": "Jjl3m47C2@#",
 }
 
-# Lista de cidades
 CITIES = ["Guarulhos", "Curitiba", "Recife", "Seoul", "Sydney", "Paris", "Miami"]
 
 def connect_to_sql():
@@ -57,32 +59,23 @@ def insert_weather_data(conn, data):
     ))
     conn.commit()
 
-def fetch_and_save_weather_data(city):
-    response = requests.get(API_URL, params={
-        "q": city,
-        "appid": API_KEY,
-        "units": "metric",
-    })
-    response.raise_for_status()
-    return response.json()
-
-def main(mytimer: func.TimerRequest) -> None:
-    logging.info("Timer trigger function executed.")
+@app.function_name("coletadadosprev")
+@app.schedule(schedule="0 0 * * * *", arg_name="mytimer", run_on_startup=True)
+def coletadadosprev(mytimer: func.TimerRequest) -> None:
+    utc_timestamp = datetime.utcnow().replace(microsecond=0).isoformat()
+    logging.info('Python timer trigger function started at %s', utc_timestamp)
 
     try:
         conn = connect_to_sql()
-
         for city in CITIES:
-            logging.info(f"Fetching weather data for {city}.")
-            try:
-                weather_data = fetch_and_save_weather_data(city)
-                insert_weather_data(conn, weather_data)
-                logging.info(f"Weather data for {city} inserted successfully.")
-            except requests.exceptions.RequestException as e:
-                logging.error(f"Error fetching data for {city}: {e}")
-            except pyodbc.Error as e:
-                logging.error(f"Database error for {city}: {e}")
-        
+            response = requests.get(API_URL, params={
+                "q": city,
+                "appid": API_KEY,
+                "units": "metric"
+            })
+            data = response.json()
+            insert_weather_data(conn, data)
+            logging.info(f"Processed data for {city}")
         conn.close()
     except Exception as e:
-        logging.error(f"Unexpected error: {e}")
+        logging.error(f"Error: {str(e)}")
