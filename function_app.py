@@ -70,17 +70,26 @@ def coletadadosprev(mytimer: func.TimerRequest) -> None:
     try:
         conn = connect_to_sql()
         for city in CITIES:
-            response = requests.get(API_URL, params={
-                "q": city,
-                "appid": API_KEY,
-                "units": "metric"
-            })
-            data = response.json()
-            insert_weather_data(conn, data)
-            logging.info(f"Processed data for {city}")
+            try:
+                response = requests.get(API_URL, params={
+                    "q": city,
+                    "appid": API_KEY,
+                    "units": "metric"
+                })
+                response.raise_for_status()
+                data = response.json()
+                insert_weather_data(conn, data)
+                logging.info(f"Processed data for {city}")
+            except requests.RequestException as req_err:
+                logging.error(f"Request error for {city}: {req_err}")
+            except Exception as city_err:
+                logging.error(f"Error processing {city}: {city_err}")
         conn.close()
     except Exception as e:
-        logging.error(f"Error: {str(e)}")
+        logging.error(f"Error in main function: {str(e)}")
+    finally:
+        if 'conn' in locals() and conn is not None:
+            conn.close()
 
 # Azure Key Vault Configuration
 KEY_VAULT_CONFIG = {
