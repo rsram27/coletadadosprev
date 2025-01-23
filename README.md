@@ -28,6 +28,9 @@ Created for testing Azure Functions integration with Azure SQL Database and Open
 ## Author : Ronaldo Ramires
 Created on: January 4, 2024
 
+## Updated on:
+January 22, 2024
+
 ## Environment Variables
 ```json
 {
