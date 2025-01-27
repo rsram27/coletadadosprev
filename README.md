@@ -1,4 +1,4 @@
-# Weather Data Collection Azure Function
+# Azure Function App
 
 Azure Function created on January 4, 2024, to collect weather data from OpenWeatherMap API and store it in Azure SQL Database.
 
@@ -14,9 +14,6 @@ Azure Function created on January 4, 2024, to collect weather data from OpenWeat
 - API: OpenWeatherMap
 
 ## Cities Monitored
-- Guarulhos
-- Curitiba
-- Recife
 - Seoul
 - Sydney
 - Paris
@@ -24,6 +21,12 @@ Azure Function created on January 4, 2024, to collect weather data from OpenWeat
 
 ## Development
 Created for testing Azure Functions integration with Azure SQL Database and OpenWeatherMap API.
+
+## Functionality
+This Azure Function App performs the following tasks:
+1. Fetches weather data for a list of predefined cities from the OpenWeatherMap API.
+2. Logs the weather data.
+3. Stores the weather data in an Azure SQL Database.
 
 ## Author : Ronaldo Ramires
 Created on: January 4, 2024

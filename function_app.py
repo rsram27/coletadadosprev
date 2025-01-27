@@ -83,38 +83,50 @@ def insert_weather_data(conn, data):
     ))
     conn.commit()
 
-@app.function_name("coletadadosprev")
-@app.schedule(schedule="0 0 * * * *", arg_name="mytimer", run_on_startup=True)
-def coletadadosprev(mytimer: func.TimerRequest) -> None:
-    utc_timestamp = datetime.utcnow().replace(microsecond=0).isoformat()
-    logging.info('Python timer trigger function started at %s', utc_timestamp)
-
+@app.function_name("WeatherDataCollector")
+@app.schedule(schedule="0 */1 * * * *", arg_name="myTimer", run_on_startup=True,
+              use_monitor=False) 
+def main(myTimer: func.TimerRequest) -> None:
     try:
-        conn = connect_to_sql()
-        if conn is None:
-            logging.error("Não foi possível conectar ao banco de dados.")
-            return
-        for city in CIDADES:
-            try:
-                response = requests.get(URL_API, params={
-                    "q": city,
-                    "appid": CHAVE_API,
-                    "units": "metric"
-                })
-                response.raise_for_status()
-                data = response.json()
-                insert_weather_data(conn, data)
-                logging.info(f"Processed data for {city}")
-            except requests.RequestException as req_err:
-                logging.error(f"Request error for {city}: {req_err}")
-            except Exception as city_err:
-                logging.error(f"Error processing {city}: {city_err}")
-        conn.close()
+        # Initialize database connection
+        conn = None
+        utc_timestamp = datetime.utcnow().replace(microsecond=0).isoformat()
+        logging.info('Python timer trigger function started at %s', utc_timestamp)
+
+        try:
+            conn = connect_to_sql()
+            if conn is None:
+                logging.error("Não foi possível conectar ao banco de dados.")
+                return
+            for city in CIDADES:
+                try:
+                    response = requests.get(URL_API, params={
+                        "q": city,
+                        "appid": CHAVE_API,
+                        "units": "metric"
+                    })
+                    response.raise_for_status()
+                    data = response.json()
+                    insert_weather_data(conn, data)
+                    logging.info(f"Processed data for {city}")
+                except requests.RequestException as req_err:
+                    logging.error(f"Request error for {city}: {req_err}")
+                except Exception as city_err:
+                    logging.error(f"Error processing {city}: {city_err}")
+            conn.close()
+        except Exception as e:
+            logging.error(f"Error in main function: {str(e)}")
+        finally:
+            if 'conn' in locals() and conn is not None:
+                conn.close()
+        
     except Exception as e:
         logging.error(f"Error in main function: {str(e)}")
+        raise  # Re-raise the exception for Azure Functions logging
     finally:
-        if 'conn' in locals() and conn is not None:
+        if conn and not conn.closed:
             conn.close()
+            logging.info("Database connection closed")
 
 # Azure Key Vault Configuration
 KEY_VAULT_CONFIG = {
