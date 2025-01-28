@@ -66,20 +66,29 @@ def connect_to_sql():
 def insert_weather_data(conn, data):
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO WeatherData (city, temperature, humidity, pressure, wind_speed, wind_deg, snow_1h, clouds_all, sunrise, sunset, dt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO WeatherData (
+            city_name, country, temperature, feels_like, temp_min, temp_max,
+            pressure, humidity, visibility, wind_speed, wind_deg, snow_1h,
+            clouds_all, sunrise, sunset, timestamp
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         data["name"],
+        data["sys"]["country"],
         data["main"]["temp"],
-        data["main"]["humidity"],
+        data["main"]["feels_like"],
+        data["main"]["temp_min"],
+        data["main"]["temp_max"],
         data["main"]["pressure"],
+        data["main"]["humidity"],
+        data.get("visibility"),
         data["wind"]["speed"],
         data["wind"]["deg"],
         data.get("snow", {}).get("1h"),
         data["clouds"]["all"],
         datetime.fromtimestamp(data["sys"]["sunrise"]),
         datetime.fromtimestamp(data["sys"]["sunset"]),
-        datetime.fromtimestamp(data["dt"]),
+        datetime.fromtimestamp(data["dt"])
     ))
     conn.commit()
 

@@ -1,47 +1,46 @@
-# Azure Function App
+# Aplicativo de Azure Function
+Função Azure criada em 4 de janeiro de 2024 para coletar dados meteorológicos da API OpenWeatherMap e armazená-los no Azure SQL Database.
 
-Azure Function created on January 4, 2024, to collect weather data from OpenWeatherMap API and store it in Azure SQL Database.
+## Recursos
+- Coleta dados meteorológicos para cidades predefinidas
+- Utiliza a API OpenWeatherMap para informações meteorológicas 
+- Armazena dados no Azure SQL Database
+- Executa como Função Azure serverless
 
-## Features
-- Collects weather data for predefined cities
-- Uses OpenWeatherMap API for weather information
-- Stores data in Azure SQL Database
-- Runs as serverless Azure Function
-
-## Configuration
-- Azure Function runtime: Python 3.9
-- Database: Azure SQL
+## Configuração
+- Runtime da Função Azure: Python 3.9
+- Banco de Dados: Azure SQL
 - API: OpenWeatherMap
 
-## Cities Monitored
-- Seoul
+## Cidades Monitoradas
+- Seul
 - Sydney
 - Paris
 - Miami
 
-## Development
-Created for testing Azure Functions integration with Azure SQL Database and OpenWeatherMap API.
+## Desenvolvimento
+Criado para testar a integração de Azure Functions com Azure SQL Database e API OpenWeatherMap.
 
-## Functionality
-This Azure Function App performs the following tasks:
-1. Fetches weather data for a list of predefined cities from the OpenWeatherMap API.
-2. Logs the weather data.
-3. Stores the weather data in an Azure SQL Database.
+## Funcionalidade
+Esta Função Azure executa as seguintes tarefas:
+1. Obtém dados meteorológicos de uma lista predefinida de cidades através da API OpenWeatherMap
+2. Registra os dados meteorológicos
+3. Armazena os dados meteorológicos no Azure SQL Database
 
-## Author : Ronaldo Ramires
-Created on: January 4, 2024
+## Autor: Ronaldo Ramires
+Criado em: 4 de janeiro de 2024
 
-## Updated on:
-January 22, 2024
+## Atualizado em:
+22 de janeiro de 2024
 
-## Environment Variables
+## Variáveis de Ambiente
 ```json
 {
-    "API_KEY": "your_openweathermap_api_key",
+    "API_KEY": "sua_chave_api_openweathermap",
     "DB_CONFIG": {
         "server": "engdados.database.windows.net",
         "database": "engdados",
-        "username": "your_username",
-        "password": "your_password"
+        "username": "seu_usuario",
+        "password": "sua_senha"
     }
 }
