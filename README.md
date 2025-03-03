@@ -31,7 +31,7 @@ Esta Função Azure executa as seguintes tarefas:
 Criado em: 4 de janeiro de 2024
 
 ## Atualizado em:
-22 de janeiro de 2024
+3 de março de 2025
 
 ## Variáveis de Ambiente
 ```json
